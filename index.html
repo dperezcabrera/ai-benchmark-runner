@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/learn-pico-ioc/" />
+    <title>Interactive python learning</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reactflow@11/dist/style.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react-dom": "https://aistudiocdn.com/react-dom@^19.2.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "@codemirror/lang-python": "https://aistudiocdn.com/@codemirror/lang-python@^6.2.1",
+    "@uiw/react-codemirror": "https://aistudiocdn.com/@uiw/react-codemirror@^4.25.2",
+    "@uiw/codemirror-theme-github": "https://aistudiocdn.com/@uiw/codemirror-theme-github@^4.25.2",
+    "reactflow": "https://esm.sh/reactflow@11?external=react,react-dom",
+    "react-markdown": "https://esm.sh/react-markdown@9?external=react,react-dom",
+    "rehype-raw": "https://esm.sh/rehype-raw@7?external=react,react-dom",
+    "dompurify": "https://esm.sh/dompurify@3",
+    "jszip": "https://esm.sh/jszip@3.10.1"
+  }
+}
+</script>
+<style>
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-fade-in-up {
+    animation: fade-in-up 0.3s ease-out forwards;
+  }
+  /* Make CodeMirror background transparent to blend with the panel */
+  .cm-editor {
+    background-color: transparent !important;
+  }
+  .cm-gutters {
+    background-color: transparent !important;
+    border-right: none !important;
+  }
+  /* Custom Scrollbar Styles */
+  /* For Webkit browsers (Chrome, Safari, Edge) */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: #334155; /* slate-700 */
+    border-radius: 10px;
+    border: 2px solid #0f172a; /* slate-900, creates a padding effect */
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: #475569; /* slate-600 */
+  }
+  /* For Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #475569 #0f172a; /* thumb color track color */
+  }
+</style>
+</head>
+  <body class="bg-slate-900 text-slate-200">
+    <div id="root"></div>
+    <script type="module" src="index.tsx"></script>
+  </body>
+</html>

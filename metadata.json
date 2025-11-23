@@ -1,0 +1,5 @@
+{
+  "name": "Benchmark",
+  "description": "An interactive, in-browser Python environment to learn and test the pico-ioc dependency injection library using Pyodide, CodeMirror, and pytest.",
+  "requestFramePermissions": []
+}
