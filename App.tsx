@@ -23,11 +23,11 @@ import json
 import random
 import time
 import importlib
+import inspect
 from verification import verify_plan
-from algorithms import FunctionalPlanner
 
-def load_config_and_instantiate_algorithms():
-    """Reads config.json injected by the UI and instantiates algo adapters."""
+def load_algorithms():
+    """Reads config.json injected by the UI and imports the function."""
     try:
         with open('config.json', 'r') as f:
             config = json.load(f)
@@ -36,7 +36,6 @@ def load_config_and_instantiate_algorithms():
         return []
 
     algos = []
-    
     for item in config:
         module_name = item.get('module')
         model_name = item.get('modelName')
@@ -49,14 +48,12 @@ def load_config_and_instantiate_algorithms():
                 continue
             
             func = getattr(user_module, 'calculate_batches')
-            full_name = f"{model_name} - {algo_name}"
-            instance = FunctionalPlanner(func, name=full_name)
-            
-            instance._ui_metadata = {
+            algos.append({
+                "name": f"{model_name} - {algo_name}",
                 "model": model_name,
-                "algorithm": algo_name
-            }
-            algos.append(instance)
+                "algorithm": algo_name,
+                "func": func
+            })
             
         except Exception as e:
             print(f"[ERROR] Failed to load '{model_name}': {e}")
@@ -74,9 +71,9 @@ def generate_example_files(num_files: int, context_size: int, seed: int = 42) ->
     return file_sizes
 
 def main():
+    # Parameters
     context_size = 8000
     overhead_tokens = 200
-    max_workers = 1 
     num_files = 20
     
     seed = 0
@@ -88,7 +85,7 @@ def main():
         pass
         
     file_sizes = generate_example_files(num_files, context_size, seed)
-    algorithms_list = load_config_and_instantiate_algorithms()
+    algorithms_list = load_algorithms()
     
     if not algorithms_list:
         print("No valid algorithms to run.")
@@ -96,9 +93,9 @@ def main():
 
     # Sequential execution loop with streaming results
     for algo in algorithms_list:
-        print(f"Running {algo.name}...")
+        print(f"Running {algo['name']}...")
+        
         start_time = time.time()
-        ui_meta = getattr(algo, '_ui_metadata', {})
         
         algo_score = 0
         verified = False
@@ -107,16 +104,19 @@ def main():
         elapsed = 0.0
 
         try:
-             # Run Plan
-             result = algo.plan(
-                context_size=context_size, 
-                file_sizes=file_sizes, 
-                max_workers=max_workers,
-                overhead_tokens=overhead_tokens
-            )
-             batches = result.batches
-             elapsed = result.elapsed_seconds
-             if elapsed == 0.0: elapsed = time.time() - start_time
+             # Run Function
+             func = algo['func']
+             
+             # Handle signature (some users might forget overhead_tokens)
+             sig = inspect.signature(func)
+             kwargs = {}
+             if 'overhead_tokens' in sig.parameters:
+                kwargs['overhead_tokens'] = overhead_tokens
+
+             batches = func(context_size, file_sizes, **kwargs)
+             
+             elapsed = time.time() - start_time
+             if elapsed == 0.0: elapsed = 0.001 # Avoid 0 div if too fast
              
              # Calculate Tokens
              total_tokens = 0
@@ -134,12 +134,12 @@ def main():
         except Exception as e:
             error_msg = str(e)
             elapsed = time.time() - start_time
-            # print(f"Error in {algo.name}: {e}")
+            # print(f"Error in {algo['name']}: {e}")
         
         step_result = {
-            "name": algo.name,
-            "model": ui_meta.get('model', 'Unknown'),
-            "algorithm": ui_meta.get('algorithm', 'Unknown'),
+            "name": algo['name'],
+            "model": algo['model'],
+            "algorithm": algo['algorithm'],
             "version": "",
             "batches": len(batches),
             "time": elapsed,
@@ -152,96 +152,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-`
-  },
-  {
-    name: "benchmark.py",
-    content: `from __future__ import annotations
-from typing import Dict, Iterable, List, Optional
-import time
-from algorithms import PlanningAlgorithm
-from models import PlanResult
-from verification import verify_plan
-
-# Kept for compatibility, though main.py now implements the loop directly for streaming
-def benchmark_algorithms(
-    context_size: int,
-    file_sizes: Dict[str, int],
-    algorithms: Iterable[PlanningAlgorithm],
-    max_workers: int,
-    overhead_tokens: int = 0,
-    verify: bool = True,
-    timeout_seconds: Optional[float] = None,
-) -> List[PlanResult]:
-    results = []
-    for algo in algorithms:
-        try:
-            result = algo.plan(context_size, file_sizes, max_workers, overhead_tokens)
-            results.append(result)
-        except Exception:
-            pass
-    return results
-`
-  },
-  {
-    name: "models.py",
-    content: `from dataclasses import dataclass, field
-from typing import Any, Dict, List
-
-@dataclass
-class PlanResult:
-    name: str
-    batches: List[List[str]]
-    elapsed_seconds: float
-    total_tokens: int
-    max_workers: int
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    verified: bool = False
-    timed_out: bool = False
-`
-  },
-  {
-    name: "algorithms.py",
-    content: `from __future__ import annotations
-from abc import ABC, abstractmethod
-from typing import Dict, List
-import inspect
-from models import PlanResult
-
-class PlanningAlgorithm(ABC):
-    name: str = "Base"
-    @abstractmethod
-    def plan(
-        self,
-        context_size: int,
-        file_sizes: Dict[str, int],
-        max_workers: int,
-        overhead_tokens: int = 0,
-    ) -> PlanResult:
-        raise NotImplementedError
-
-class FunctionalPlanner(PlanningAlgorithm):
-    """Adapter to treat a standalone function as a PlanningAlgorithm."""
-    
-    def __init__(self, func, name: str):
-        self.name = name
-        self._func = func
-        
-    def plan(self, context_size: int, file_sizes: Dict[str, int], max_workers: int, overhead_tokens: int = 0) -> PlanResult:
-        sig = inspect.signature(self._func)
-        kwargs = {}
-        if 'overhead_tokens' in sig.parameters:
-            kwargs['overhead_tokens'] = overhead_tokens
-            
-        batches = self._func(context_size, file_sizes, **kwargs)
-        
-        return PlanResult(
-            name=self.name,
-            batches=batches,
-            elapsed_seconds=0.0, 
-            total_tokens=0,
-            max_workers=max_workers
-        )
 `
   },
   {
